@@ -1,0 +1,23 @@
+# Local development database. Production uses a managed Postgres instead.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: ttlab-db
+    environment:
+      # Local-only credentials; never reuse them anywhere real.
+      POSTGRES_USER: ttlab
+      POSTGRES_PASSWORD: ttlab_dev_password
+      POSTGRES_DB: ttlab_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      # A named volume keeps your data when the container is stopped or recreated.
+      - ttlab-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ttlab -d ttlab_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  ttlab-pgdata:

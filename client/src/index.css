@@ -1,0 +1,96 @@
+/* Layout: one centered column, a tab bar, and cards. Two colors name the two forms of a
+   holding everywhere they appear: blue = traditional (book entry), teal = tokenized. */
+:root {
+  --bg: #f3f6f5;
+  --surface: #ffffff;
+  --surface-2: #eaf0ee;
+  --text: #17201e;
+  --muted: #56645f;
+  --border: #d0d9d6;
+  --accent: #0b6b5d;
+  --accent-text: #ffffff;
+  --traditional: #3d5ba9;
+  --tokenized: #0e8a75;
+  --ok: #17703a;
+  --ok-bg: #e4f3e9;
+  --bad: #b3261e;
+  --bad-bg: #fbe9e7;
+  --info: #3d5ba9;
+  --info-bg: #e8edf8;
+  --warn-bg: #fff4d1;
+  --warn-border: #c49205;
+  --focus: #1b72e8;
+
+  --font-body: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
+
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1413;
+    --surface: #151d1b;
+    --surface-2: #1c2624;
+    --text: #e2eae7;
+    --muted: #94a39e;
+    --border: #2d3a37;
+    --accent: #3cb59f;
+    --accent-text: #04201a;
+    --traditional: #8ea7ec;
+    --tokenized: #45c6ad;
+    --ok: #4cc06e;
+    --ok-bg: #11281a;
+    --bad: #ff7b72;
+    --bad-bg: #351614;
+    --info: #8ea7ec;
+    --info-bg: #182037;
+    --warn-bg: #2a230d;
+    --warn-border: #8a6c0b;
+    --focus: #6ea8ff;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+}
+
+code,
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
