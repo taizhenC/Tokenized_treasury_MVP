@@ -1,0 +1,21 @@
+# Private interview-prep notes (not part of the project)
+DTCC-EDGE-Five-Day-Lock-In-Guide.md
+
+# Dependencies and build output
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets: real values live in .env files that are never committed
+.env
+.env.*
+!.env.example
+
+# Logs and editor/OS files
+*.log
+.DS_Store
+.vscode/
+.idea/
