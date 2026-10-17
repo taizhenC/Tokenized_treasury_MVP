@@ -1,0 +1,13 @@
+# Keep the image small and free of local secrets and build output.
+.git
+**/node_modules
+client/dist
+server/.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+**/.env
+**/.env.*
+!**/.env.example
+*.log
+DTCC-EDGE-Five-Day-Lock-In-Guide.md

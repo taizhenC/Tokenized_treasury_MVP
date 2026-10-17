@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    name: API tests on real PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ttlab
+          POSTGRES_PASSWORD: ttlab_dev_password
+          POSTGRES_DB: ttlab_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ttlab -d ttlab_dev"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgresql://ttlab:ttlab_dev_password@localhost:5432/ttlab_dev
+      # The suite drops and recreates this separate database; it never touches ttlab_dev.
+      TEST_DATABASE_URL: postgresql://ttlab:ttlab_dev_password@localhost:5432/ttlab_test
+      SESSION_COOKIE_SECURE: "false"
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Generate a throwaway session secret
+        run: echo "SESSION_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+      - run: uv sync --frozen
+      - name: Build the test database from the migrations and seeds
+        run: uv run python -m tests.reset_db
+      - run: uv run pytest
+
+  client:
+    name: Client lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint -w client
+      - run: npm run build -w client
