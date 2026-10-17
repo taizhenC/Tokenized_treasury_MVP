@@ -1,0 +1,27 @@
+{
+  "name": "tokenized-treasury-lab",
+  "private": true,
+  "workspaces": [
+    "client"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "concurrently --names api,client --prefix-colors blue,magenta \"npm:dev:api\" \"npm:dev:client\"",
+    "dev:api": "uv run --directory server python dev.py",
+    "dev:client": "npm run dev -w client",
+    "build": "npm run build -w client",
+    "lint": "npm run lint -w client",
+    "test": "uv run --directory server python -m tests.reset_db && uv run --directory server pytest",
+    "db:up": "docker compose up -d --wait db",
+    "db:down": "docker compose down",
+    "db:psql": "docker compose exec db psql -U ttlab -d ttlab_dev",
+    "db:migrate": "uv run --directory server python -m db.migrate",
+    "db:seed": "uv run --directory server python -m db.migrate --seed",
+    "db:reset": "docker compose down -v && docker compose up -d --wait db && npm run db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
