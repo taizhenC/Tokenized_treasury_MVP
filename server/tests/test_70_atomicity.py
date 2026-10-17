@@ -42,6 +42,28 @@ def test_forced_error_after_the_debit_rolls_everything_back(users, probe):
     assert probe.rows_for_key(11, key) == 1
 
 
+def test_an_unexpected_error_keeps_the_connection_usable(users, probe):
+    """A 500 must not close the keep-alive connection behind the client's back. (Starlette's own
+    catch-all re-raises after the 500 and uvicorn then closes the socket; on Linux the client's
+    next read or request raced that close. app.errors.UnexpectedErrors answers without re-raising.)"""
+    set_tokenized(users, probe, 101, 50)
+    alpha = users["alpha"].fork()
+    warm = alpha.get("/api/me")  # opens the connection
+
+    def crash(conn):
+        raise RuntimeError("simulated crash")
+
+    with spying(after={"debit_source": crash}):
+        crashed = alpha.transfer(102, 1, new_key("keepalive"))
+    after = alpha.get("/api/me")
+    assert crashed.status_code == 500 and crashed.json() == {"error": "internal error"}
+    assert after.status_code == 200
+    # One TCP connection served all three requests: the server never closed it.
+    streams = {id(r.extensions["network_stream"]) for r in (warm, crashed, after)}
+    assert len(streams) == 1
+    alpha.close()
+
+
 def test_connection_killed_after_the_debit_is_503_and_rolls_back(users, probe, database_url):
     set_tokenized(users, probe, 101, 50)
     before = probe.snapshot()

@@ -20,6 +20,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from psycopg import errors as pg
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 log = logging.getLogger("ttlab")
 
@@ -82,13 +83,42 @@ async def _http_error(request: Request, exc: StarletteHTTPException) -> JSONResp
     return JSONResponse({"error": exc.detail}, status_code=exc.status_code, headers=exc.headers)
 
 
-async def _unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-    log.error("%s %s -> 500", request.method, request.url.path, exc_info=exc)
-    return JSONResponse({"error": "internal error"}, status_code=500)
+class UnexpectedErrors:
+    """Pure ASGI middleware: any unhandled exception becomes 500 {"error": "internal error"}.
+
+    Starlette's own catch-all sends the 500 and then re-raises, and uvicorn answers that by
+    closing the connection, although the 500 never said "Connection: close". A keep-alive client
+    then reads from or sends into a closing socket: on Linux (uvloop or asyncio) this lost
+    responses and reset connections. Answering here, without re-raising, keeps the connection a
+    normal keep-alive connection.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        started = False
+
+        async def tracking_send(message: Message) -> None:
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, receive, tracking_send)
+        except Exception as exc:
+            if started:
+                raise  # part of a response already went out; only the server can end it now
+            log.error("%s %s -> 500", scope["method"], scope["path"], exc_info=exc)
+            await JSONResponse({"error": "internal error"}, status_code=500)(scope, receive, send)
 
 
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(psycopg.Error, _database_error)
     app.add_exception_handler(RequestValidationError, _validation_error)
     app.add_exception_handler(StarletteHTTPException, _http_error)
-    app.add_exception_handler(Exception, _unexpected_error)
+    # Every other exception is answered by the UnexpectedErrors middleware (see main.py).

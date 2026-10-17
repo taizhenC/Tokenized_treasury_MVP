@@ -150,7 +150,7 @@ uv run --directory server python -m db.try_block queries/holdings.sql holdings_f
 
 ## Tests
 
-`npm test` runs 258 tests against a **real PostgreSQL** database (`ttlab_test`, set by
+`npm test` runs 259 tests against a **real PostgreSQL** database (`ttlab_test`, set by
 `TEST_DATABASE_URL` in `server/.env`; the suite refuses to touch the dev database) and a real
 uvicorn server. Nothing about database behaviour is mocked.
 
@@ -162,7 +162,7 @@ uvicorn server. Nothing about database behaviour is mocked.
 | `test_45_authorization` | Auditor never writes; participants act and read only for their own account; every endpoint needs a login |
 | `test_50_demo_flow` | The demo flow end to end, replay, `409` on a changed body, every rejection with nothing persisted |
 | `test_60_driver_boundary` | The psycopg rules the app relies on (parameters, typed ints, JSONB, row lookup) |
-| `test_70_atomicity` | An error or a killed connection after the debit leaves no trace; fast recovery after a DB restart |
+| `test_70_atomicity` | An error or a killed connection after the debit leaves no trace; a 500 keeps the connection usable; fast recovery after a DB restart |
 | `test_80_concurrency` | Two simultaneous transfers of 80 from 100 cannot both succeed; same-key duplicates apply once; no deadlocks |
 | `test_85_reconciliation` | One snapshot for both checks; deliberate corruptions are detected |
 | `test_99_final` | After hundreds of concurrent operations the books still balance |

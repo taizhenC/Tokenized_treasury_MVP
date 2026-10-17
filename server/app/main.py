@@ -9,7 +9,7 @@ from psycopg_pool import PoolTimeout
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.db import pool
-from app.errors import install_error_handlers
+from app.errors import UnexpectedErrors, install_error_handlers
 from app.limits import BodySizeLimit
 from app.routes import auth, conversions, holdings, operations, reconciliation, transfers
 from app.settings import Settings, load_settings
@@ -59,8 +59,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         same_site="lax",
         https_only=settings.session_cookie_secure,
     )
-    # Added last, so it runs first: an oversized body gets 413 before anything reads it.
+    # Added after the session middleware, so it runs before it: an oversized body gets 413
+    # before anything reads it.
     app.add_middleware(BodySizeLimit)
+    # Added last, so it wraps everything: any unexpected exception becomes a clean 500.
+    app.add_middleware(UnexpectedErrors)
     install_error_handlers(app)
     app.add_api_route("/api/health", health, methods=["GET"])
     # One router per lesson: L5 auth + holdings, L6 conversions, L7 transfers, L9 reconciliation, L10 operations.
