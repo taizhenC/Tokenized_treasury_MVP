@@ -11,7 +11,17 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.db import pool
 from app.errors import UnexpectedErrors, install_error_handlers
 from app.limits import BodySizeLimit
-from app.routes import auth, conversions, holdings, operations, reconciliation, transfers
+from app.routes import (
+    auth,
+    conversions,
+    delivery_orders,
+    holdings,
+    operations,
+    reconciliation,
+    settlement_day,
+    settlement_reads,
+    transfers,
+)
 from app.settings import Settings, load_settings
 
 # The built React app (`npm run build` writes it). Present in the production image; absent in
@@ -66,8 +76,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(UnexpectedErrors)
     install_error_handlers(app)
     app.add_api_route("/api/health", health, methods=["GET"])
-    # One router per lesson: L5 auth + holdings, L6 conversions, L7 transfers, L9 reconciliation, L10 operations.
-    for module in (auth, holdings, conversions, transfers, reconciliation, operations):
+    # One router per lesson: L5 auth + holdings, L6 conversions, L7 transfers, L9 reconciliation, L10 operations,
+    # L12 delivery orders + settlement progress payments, L13 the settlement day, L14 settlement reads.
+    for module in (
+        auth, holdings, conversions, transfers, reconciliation, operations,
+        delivery_orders, settlement_day, settlement_reads,
+    ):
         app.include_router(module.router)
     # Production: one service serves both the API and the UI from the same origin, so the
     # session cookie needs no CORS setup. Mounted last, so every /api route above wins.

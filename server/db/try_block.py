@@ -12,8 +12,8 @@ parameters - the same way the app runs them:
 
 (One line: it works the same in PowerShell and in bash.)
 
-Value types, the same as the app sends them: quantity and every name ending in _id are sent as
-integers; every other name is sent as text, even when it looks like a number (idempotency_key=2024
+Value types, the same as the app sends them: quantity and every name ending in _id or _cents are
+sent as integers; every other name is sent as text, even when it looks like a number (idempotency_key=2024
 is the text '2024'); the word null is sent as NULL. Quote a value that contains spaces.
 Nothing is ever saved: the transaction is always rolled back at the end.
 --hold keeps the transaction (and its row locks) open until you press Enter; run the same
@@ -37,7 +37,7 @@ DB_DIR = SERVER_DIR / "db"
 
 def is_integer_name(name: str) -> bool:
     """The app sends these as Python ints (so "-%(quantity)s" works); everything else is text."""
-    return name == "quantity" or name.endswith("_id")
+    return name == "quantity" or name.endswith("_id") or name.endswith("_cents")
 
 
 def parse_value(name: str, text: str) -> int | str | None:

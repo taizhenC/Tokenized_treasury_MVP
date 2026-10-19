@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api", tags=["operations"])
 
 @router.get("/operations")
 def get_operations(user: CurrentUser, db: DbPool) -> list[User]:
-    """A participant sees operations that touched their account; the auditor sees all.
+    """A participant sees operations that touched their account; the auditor and the operator see all.
     Newest id first, at most 100."""
     with db.connection() as conn:
         return history.history_for(conn, user)
