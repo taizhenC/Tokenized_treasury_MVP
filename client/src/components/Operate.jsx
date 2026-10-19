@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useApiData } from '../useApiData.js'
 import { useIdempotentSubmit } from '../useIdempotentSubmit.js'
-import { formatUnits, friendlyError, quantityProblem, QUANTITY_MAX, shortName } from '../format.js'
+import { formatUnits, quantityProblem, shortName } from '../format.js'
 import { BalanceFigures } from './Balance.jsx'
+import { QuantityField, RequestResult } from './Forms.jsx'
 import { LoadError, Loading } from './States.jsx'
-
 
 // Screen 2: the two write actions. Every submit sends a fresh idempotency key; the server
 // takes the account to act on from the session, never from this form.
@@ -50,7 +50,10 @@ function ConvertForm({ onChanged }) {
   return (
     <section className="card" aria-labelledby="convert-title">
       <h2 id="convert-title">Convert</h2>
-      <p className="muted small">Change the form of your units. Your total does not change.</p>
+      <p className="muted small">
+        Change the form of your units. Your total does not change, but your settlement collateral does:
+        tokenized units count $0 as collateral.
+      </p>
       <form onSubmit={handleSubmit} noValidate>
         <fieldset>
           <legend>Direction</legend>
@@ -158,80 +161,5 @@ function TransferForm({ user, accounts, onChanged }) {
         }
       />
     </section>
-  )
-}
-
-function QuantityField({ id, value, onChange, problem }) {
-  return (
-    <>
-      <label htmlFor={id}>Quantity (units)</label>
-      <input
-        id={id}
-        inputMode="numeric"
-        placeholder={`1 to ${formatUnits(QUANTITY_MAX)}`}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-invalid={Boolean(problem)}
-        aria-describedby={problem ? `${id}-problem` : undefined}
-      />
-      {problem && (
-        <p id={`${id}-problem`} className="field-problem">
-          {problem}
-        </p>
-      )}
-    </>
-  )
-}
-
-// What happened to the last request, and the safe way to send it again.
-function RequestResult({ request, onResend, describe }) {
-  const { state, canResend } = request
-  if (state.phase === 'idle') return null
-  if (state.phase === 'sending') {
-    return (
-      <p className="message" role="status">
-        Sending…
-      </p>
-    )
-  }
-
-  if (state.phase === 'failed') {
-    const { error, retryable } = state
-    return (
-      <div className="message message-bad" role="alert">
-        <p>
-          {friendlyError(error)} {error.status > 0 && <span className="mono muted">HTTP {error.status}</span>}
-        </p>
-        {retryable && (
-          <>
-            <p className="small">
-              {error.status === 503
-                ? 'Nothing was saved. '
-                : 'The request may or may not have reached the server. '}
-              Retrying with the same idempotency key is safe: the server applies a key at most once.
-            </p>
-            <button type="button" className="button-quiet" onClick={onResend} disabled={!canResend}>
-              Retry the same request
-            </button>
-          </>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className={`message ${state.replayed ? 'message-info' : 'message-ok'}`} role="status">
-      {state.replayed && (
-        <p>
-          <strong>Replayed, not applied twice.</strong> The server already had this idempotency key and
-          returned its stored result.
-        </p>
-      )}
-      <p>{describe(state.data)}</p>
-      <button type="button" className="button-quiet" onClick={onResend} disabled={!canResend}>
-        Send the same request again
-      </button>
-      <p className="muted small">Same key, same body: the server replays the stored result instead of moving units again.</p>
-    </div>
   )
 }

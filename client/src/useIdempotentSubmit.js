@@ -9,7 +9,8 @@ function newKey() {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-// Sends a write (conversion or transfer) with an idempotency key.
+// Sends a write (conversion, transfer, deliver order, payment or end-of-day step) with an idempotency key.
+// A deliver order that recycles answers 202, which fetch also counts as ok: state.status tells 201 from 202.
 // - submit(payload): a NEW request, so a new key.
 // - resend(): the exact same payload with the SAME key. The server applies a key at most once,
 //   so this is always safe: after a network error or 503 it finishes the request, and after a

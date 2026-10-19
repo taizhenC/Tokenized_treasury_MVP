@@ -5,22 +5,40 @@ import History from './components/History.jsx'
 import Holdings from './components/Holdings.jsx'
 import Operate from './components/Operate.jsx'
 import Reconciliation from './components/Reconciliation.jsx'
+import Settlement from './components/Settlement.jsx'
+import SettlementDay from './components/SettlementDay.jsx'
+import SettlementOverview from './components/SettlementOverview.jsx'
 import SignIn from './components/SignIn.jsx'
 import './App.css'
 
-// The tabs each role sees. The API enforces the same rules; hiding a tab is only convenience.
+// The tabs each role sees; the first one opens after sign-in. The API enforces the same rules;
+// hiding a tab is only convenience.
 const TABS = {
   PARTICIPANT: [
     ['holdings', 'Holdings'],
     ['operate', 'Convert & transfer'],
+    ['settlement', 'Settlement (DVP)'],
     ['history', 'History'],
     ['reconciliation', 'Reconciliation'],
   ],
   AUDITOR: [
     ['holdings', 'Holdings'],
+    ['settlement', 'Settlement'],
     ['history', 'History'],
     ['reconciliation', 'Reconciliation'],
   ],
+  OPERATOR: [
+    ['settlement-day', 'Settlement day'],
+    ['holdings', 'Holdings'],
+    ['history', 'History'],
+  ],
+}
+const firstTab = (role) => TABS[role]?.[0]?.[0] ?? 'holdings'
+
+function roleNote(user) {
+  if (user.role === 'AUDITOR') return 'Auditor, read-only'
+  if (user.role === 'OPERATOR') return 'Operator, settlement desk'
+  return `Participant · account ${user.account_id}`
 }
 
 export default function App() {
@@ -37,7 +55,10 @@ export default function App() {
     })
     // Is there already a valid session cookie? (The cookie itself is HttpOnly: only the API can read it.)
     api('/me').then(
-      ({ data }) => setSession({ phase: 'signedIn', user: data }),
+      ({ data }) => {
+        setTab(firstTab(data.role))
+        setSession({ phase: 'signedIn', user: data })
+      },
       (error) => {
         setSession({ phase: 'signedOut' })
         if (error.status !== 401) setNotice(error.message)
@@ -47,7 +68,7 @@ export default function App() {
 
   function handleSignedIn(user) {
     setNotice(null)
-    setTab('holdings')
+    setTab(firstTab(user.role))
     setSession({ phase: 'signedIn', user })
   }
 
@@ -62,7 +83,8 @@ export default function App() {
   }
 
   const user = session.user
-  const tabs = user ? TABS[user.role] : []
+  const tabs = user ? (TABS[user.role] ?? []) : []
+  const onChanged = () => setReloadKey((k) => k + 1)
 
   return (
     <div className="app">
@@ -71,16 +93,16 @@ export default function App() {
           <span className="brand-mark" aria-hidden="true" />
           <div>
             <h1>Tokenized Treasury Lab</h1>
-            <p className="muted small">DEMO-TREASURY · simulated custody, conversion and transfer</p>
+            <p className="muted small">
+              DEMO-TREASURY · simulated custody, conversion, transfer and DVP settlement
+            </p>
           </div>
         </div>
         {user && (
           <div className="whoami">
             <span>
               <strong>{user.username}</strong>{' '}
-              <span className="muted">
-                {user.role === 'AUDITOR' ? 'Auditor, read-only' : `Participant · account ${user.account_id}`}
-              </span>
+              <span className="muted">{roleNote(user)}</span>
             </span>
             <button type="button" className="button-quiet" onClick={() => signOut()}>
               Sign out
@@ -114,7 +136,14 @@ export default function App() {
         {session.phase === 'signedOut' && <SignIn onSignedIn={handleSignedIn} notice={notice} />}
         {user && tab === 'holdings' && <Holdings user={user} reloadKey={reloadKey} />}
         {user && tab === 'operate' && user.role === 'PARTICIPANT' && (
-          <Operate user={user} reloadKey={reloadKey} onChanged={() => setReloadKey((k) => k + 1)} />
+          <Operate user={user} reloadKey={reloadKey} onChanged={onChanged} />
+        )}
+        {user && tab === 'settlement' && user.role === 'PARTICIPANT' && (
+          <Settlement user={user} reloadKey={reloadKey} onChanged={onChanged} />
+        )}
+        {user && tab === 'settlement' && user.role === 'AUDITOR' && <SettlementOverview reloadKey={reloadKey} />}
+        {user && tab === 'settlement-day' && user.role === 'OPERATOR' && (
+          <SettlementDay reloadKey={reloadKey} onChanged={onChanged} />
         )}
         {user && tab === 'history' && <History user={user} reloadKey={reloadKey} />}
         {user && tab === 'reconciliation' && (

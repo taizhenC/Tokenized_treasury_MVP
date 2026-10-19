@@ -1,12 +1,28 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 
-// The seeded demo users. All four share one public demo password: the data is synthetic.
+// The seeded demo users. All five share one public demo password: the data is synthetic.
 const DEMO_USERS = [
   { username: 'alpha', note: 'Participant, account 101' },
   { username: 'beta', note: 'Participant, account 102' },
   { username: 'gamma', note: 'Participant, account 103' },
   { username: 'auditor', note: 'Read-only, runs reconciliation' },
+  { username: 'operator', note: 'Operator, settlement desk' },
+]
+
+// The settlement demo, step by step (its numbers hold on a freshly seeded database).
+const SETTLEMENT_DEMO = [
+  ['alpha', 'Deliver 200 units to Beta for $20,000.00: it recycles (Beta would be beyond its net debit cap).'],
+  ['beta', 'Deliver 100 units to Gamma for $10,000.00: it settles, and the retry also settles the first order.'],
+  ['gamma', 'Convert 995 to tokenized: refused (tokenized units count $0 as collateral). Then convert 994.'],
+  [
+    'alpha',
+    'Deliver 100 to Gamma for $10,000.00 (Gamma’s collateral monitor) and 100 to Beta for $10,000.00 ' +
+      '(Beta’s cap): both recycle.',
+  ],
+  ['gamma', 'Pay in $500.00 as a settlement progress payment: the order to Gamma settles.'],
+  ['operator', 'Run the valued cutoff (the order to Beta drops), then final settlement: read the NSS file.'],
+  ['auditor', 'Run reconciliation: every check passes, still 3,000 units.'],
 ]
 const DEMO_PASSWORD = 'demo-password-1'
 
@@ -86,6 +102,19 @@ export default function SignIn({ onSignedIn, notice }) {
             </li>
           ))}
         </ul>
+        <details className="demo-script">
+          <summary>Settlement demo, step by step</summary>
+          <ol>
+            {SETTLEMENT_DEMO.map(([who, what], i) => (
+              <li key={i}>
+                <strong>{who}</strong>: {what}
+              </li>
+            ))}
+          </ol>
+          <p className="muted small">
+            Deliver orders and payments are on the Settlement (DVP) tab; minting is on Convert &amp; transfer.
+          </p>
+        </details>
       </section>
     </div>
   )
