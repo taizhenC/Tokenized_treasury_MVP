@@ -18,6 +18,8 @@ def _no_nul(value: str) -> str:
 
 Quantity = Annotated[int, Field(ge=1, le=1_000_000)]
 AccountId = Annotated[int, Field(ge=1, le=2_147_483_647)]  # the INTEGER column range
+# Whole cents, 1 cent .. $100 billion: the CHECKs on operations and delivery_instructions use the same range.
+AmountCents = Annotated[int, Field(ge=1, le=10_000_000_000_000)]
 IdempotencyKey = Annotated[str, Field(min_length=1, max_length=100), AfterValidator(_no_nul)]
 Text = Annotated[str, Field(min_length=1, max_length=200), AfterValidator(_no_nul)]
 
@@ -40,4 +42,26 @@ class ConversionRequest(StrictBody):
 class TransferRequest(StrictBody):
     to_account_id: AccountId = Field(alias="toAccountId")
     quantity: Quantity
+    idempotency_key: IdempotencyKey = Field(alias="idempotencyKey")
+
+
+class DeliverOrderRequest(StrictBody):
+    """A valued delivery: `quantity` units to `toAccountId`, against `amountCents` (DVP)."""
+
+    to_account_id: AccountId = Field(alias="toAccountId")
+    quantity: Quantity
+    amount_cents: AmountCents = Field(alias="amountCents")
+    idempotency_key: IdempotencyKey = Field(alias="idempotencyKey")
+
+
+class SettlementPaymentRequest(StrictBody):
+    """A settlement progress payment: Fed funds the participant wires to DTC to reduce its debit."""
+
+    amount_cents: AmountCents = Field(alias="amountCents")
+    idempotency_key: IdempotencyKey = Field(alias="idempotencyKey")
+
+
+class SettlementDayRequest(StrictBody):
+    """The operator's end-of-day steps take no input but the key: the day comes from the database."""
+
     idempotency_key: IdempotencyKey = Field(alias="idempotencyKey")

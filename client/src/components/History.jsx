@@ -1,12 +1,14 @@
 import { useApiData } from '../useApiData.js'
-import { formatTime, formatUnits, OPERATION_LABELS, shortName } from '../format.js'
+import { formatCents, formatTime, formatUnits, OPERATION_LABELS, shortName } from '../format.js'
 import { Empty, LoadError, Loading } from './States.jsx'
 
 const HISTORY_LIMIT = 100 // the API returns at most this many, newest first
 
 // What one operation did to the signed-in participant's account, as ledger lines would say it.
+// Quantity and amount are null for the types that move no units or no money.
 function effectOn(op, accountId) {
   const q = formatUnits(op.quantity)
+  const amount = formatCents(op.amount_cents)
   switch (op.operation_type) {
     case 'OPENING':
       return `+${q} traditional`
@@ -16,17 +18,31 @@ function effectOn(op, accountId) {
       return `−${q} tokenized, +${q} traditional`
     case 'TRANSFER':
       return op.source_account_id === accountId ? `−${q} tokenized` : `+${q} tokenized`
+    case 'DELIVER_ORDER':
+      return 'Instruction only: moves nothing by itself'
+    case 'DVP_SETTLEMENT':
+      return op.source_account_id === accountId
+        ? `−${q} traditional, +${amount} credit`
+        : `+${q} traditional, −${amount} debit`
+    case 'SETTLEMENT_PROGRESS_PAYMENT':
+      return `+${amount} credit (paid in)`
     default:
       return ''
   }
 }
 
+// Who acted. Rows without an actor: OPENING came from the seed, DVP_SETTLEMENT from the engine.
+function actorOf(op) {
+  if (op.actor_username) return op.actor_username
+  return <span className="muted">{op.operation_type === 'OPENING' ? 'seed' : 'system'}</span>
+}
+
 // Screen 3: the audit trail. A participant sees operations that touched their account; the
-// auditor sees every operation.
+// auditor and the operator see every operation.
 export default function History({ user, reloadKey }) {
   const operations = useApiData('/operations', reloadKey)
   const accounts = useApiData('/accounts')
-  const isAuditor = user.role === 'AUDITOR'
+  const seesAll = user.role !== 'PARTICIPANT'
 
   const accountLabel = (id) => {
     if (id === null) return '—'
@@ -44,7 +60,9 @@ export default function History({ user, reloadKey }) {
   else if (operations.error && !operations.data)
     body = <LoadError error={operations.error} onRetry={operations.reload} />
   else if (operations.data.length === 0)
-    body = <Empty>No operations yet. Conversions and transfers appear here as soon as they commit.</Empty>
+    body = (
+      <Empty>No operations yet. Conversions, transfers and settlements appear here as soon as they commit.</Empty>
+    )
   else
     body = (
       <div className="table-wrap">
@@ -56,7 +74,8 @@ export default function History({ user, reloadKey }) {
               <th scope="col">From</th>
               <th scope="col">To</th>
               <th scope="col" className="num">Units</th>
-              {!isAuditor && <th scope="col">Effect on you</th>}
+              <th scope="col" className="num">Amount</th>
+              {!seesAll && <th scope="col">Effect on you</th>}
               <th scope="col">By</th>
               <th scope="col">When</th>
             </tr>
@@ -73,8 +92,9 @@ export default function History({ user, reloadKey }) {
                 <td>{accountLabel(op.source_account_id)}</td>
                 <td>{accountLabel(op.destination_account_id)}</td>
                 <td className="num">{formatUnits(op.quantity)}</td>
-                {!isAuditor && <td className="nowrap">{effectOn(op, user.account_id)}</td>}
-                <td>{op.actor_username ?? <span className="muted">seed</span>}</td>
+                <td className="num">{formatCents(op.amount_cents)}</td>
+                {!seesAll && <td className="nowrap">{effectOn(op, user.account_id)}</td>}
+                <td>{actorOf(op)}</td>
                 <td className="nowrap">{formatTime(op.created_at)}</td>
               </tr>
             ))}
@@ -89,7 +109,7 @@ export default function History({ user, reloadKey }) {
         <div>
           <h2 id="history-title">Operation history</h2>
           <p className="muted">
-            {isAuditor ? 'Every committed operation' : 'Operations that touched your account'}, newest first.
+            {seesAll ? 'Every committed operation' : 'Operations that touched your account'}, newest first.
             {operations.data?.length === HISTORY_LIMIT && ` Showing the latest ${HISTORY_LIMIT}.`}
           </p>
         </div>

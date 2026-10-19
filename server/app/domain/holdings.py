@@ -11,11 +11,15 @@ SQL = queries.load("holdings", queries.HOLDINGS_BLOCKS)
 
 Row = dict[str, Any]
 
+# The roles that read every account. Anything else reads by its own account_id - deny by default:
+# a user without an account matches no row.
+OVERSEERS = ("AUDITOR", "OPERATOR")
+
 
 def holdings_for(conn: Connection, user: Row) -> list[Row]:
-    """PARTICIPANT: only their own account. AUDITOR: every account."""
+    """PARTICIPANT: only their own account. AUDITOR / OPERATOR: every account."""
     cur = conn.cursor(row_factory=dict_row)
-    if user["role"] == "AUDITOR":
+    if user["role"] in OVERSEERS:
         return cur.execute(SQL["holdings_all"]).fetchall()
     return cur.execute(SQL["holdings_for_account"], {"account_id": user["account_id"]}).fetchall()
 

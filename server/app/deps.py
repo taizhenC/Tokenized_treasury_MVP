@@ -5,6 +5,8 @@ the browser sends:
     current_user  401 unless the signed session cookie names an existing user
     participant   403 unless that user is a PARTICIPANT (the only role that may change holdings)
     auditor       403 unless that user is an AUDITOR (read-only, sees every account)
+    operator      403 unless that user is an OPERATOR (runs the end-of-day steps, nothing else)
+    overseer      403 unless that user is an AUDITOR or an OPERATOR (reads that list every account)
 """
 
 from typing import Annotated, Any
@@ -50,6 +52,20 @@ def auditor(user: Annotated[User, Depends(current_user)]) -> User:
     return user
 
 
+def operator(user: Annotated[User, Depends(current_user)]) -> User:
+    if user["role"] != "OPERATOR":
+        raise HTTPException(403, "operators only")
+    return user
+
+
+def overseer(user: Annotated[User, Depends(current_user)]) -> User:
+    if user["role"] not in ("AUDITOR", "OPERATOR"):
+        raise HTTPException(403, "auditors and operators only")
+    return user
+
+
 CurrentUser = Annotated[User, Depends(current_user)]
 Participant = Annotated[User, Depends(participant)]
 Auditor = Annotated[User, Depends(auditor)]
+Operator = Annotated[User, Depends(operator)]
+Overseer = Annotated[User, Depends(overseer)]

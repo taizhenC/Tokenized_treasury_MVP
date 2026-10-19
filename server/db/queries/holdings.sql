@@ -12,8 +12,8 @@ WHERE symbol = %(symbol)s;
 -- APP DECIDES: 0 rows -> 500 "run the seeds first".
 
 -- APP DECIDES which holdings statement to run, from the SESSION user (never from the request):
---   PARTICIPANT -> holdings_for_account with account_id = the user's own account_id
---   AUDITOR     -> holdings_all
+--   PARTICIPANT          -> holdings_for_account with account_id = the user's own account_id
+--   AUDITOR or OPERATOR  -> holdings_all
 
 -- name: holdings_for_account
 -- account_id = account_id of the logged-in participant
@@ -32,7 +32,7 @@ WHERE p.account_id = %(account_id)s
 ORDER BY s.symbol;
 
 -- name: holdings_all
--- AUDITOR: every account.
+-- AUDITOR or OPERATOR: every account.
 SELECT a.id AS account_id,
        a.participant_name,
        a.wallet_ref,

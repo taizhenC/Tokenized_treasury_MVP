@@ -4,7 +4,8 @@ Database errors (psycopg) map to HTTP codes by class, after psycopg has already 
 transaction back:
 
     ForeignKeyViolation (23503)   -> 422  e.g. transfer to an account that does not exist
-    CheckViolation (23514)        -> 422  a CHECK constraint caught what the app missed
+    CheckViolation (23514)        -> 422  a CHECK constraint caught what the app missed (the two
+                                          risk-control CHECKs get their own message)
     UniqueViolation (23505)       -> 409  a row with that key already exists
     OperationalError              -> 503  connection lost (57P01, 08xxx), pool timeout,
                                           deadlock or serialization failure (40xxx): retry
@@ -29,9 +30,18 @@ UNKNOWN_ACCOUNT_CONSTRAINTS = {
     "operations_destination_account_id_fkey",
 }
 
+# The settlement risk controls are CHECKs on settlement_accounts. The app checks them first and
+# recycles the delivery with a clear reason, so these fire only when the app's own check missed a
+# breach - the database is the last line of defence, and the answer still says which control held.
+CONSTRAINT_MESSAGES = {
+    "settlement_within_net_debit_cap": "net debit cap exceeded",
+    "settlement_collateral_monitor_nonnegative": "collateral monitor would go negative",
+}
+
 # The 400 message for each request field (by its JSON name).
 FIELD_MESSAGES = {
     "quantity": "quantity must be a whole number 1..1000000",
+    "amountCents": "amountCents must be a whole number of cents 1..10000000000000",
     "toAccountId": "toAccountId must be a whole number 1..2147483647",
     "idempotencyKey": "idempotency key must be 1..100 characters (no NUL)",
     "direction": "direction must be TO_TOKENIZED or TO_TRADITIONAL",
@@ -48,7 +58,8 @@ def classify_db_error(exc: psycopg.Error) -> tuple[int, dict]:
         message = "unknown account" if constraint in UNKNOWN_ACCOUNT_CONSTRAINTS else "unknown reference"
         return 422, {"error": message, "pgCode": code, "constraint": constraint}
     if isinstance(exc, pg.CheckViolation):
-        return 422, {"error": "rule violated", "pgCode": code, "constraint": constraint}
+        message = CONSTRAINT_MESSAGES.get(constraint, "rule violated")
+        return 422, {"error": message, "pgCode": code, "constraint": constraint}
     if isinstance(exc, pg.UniqueViolation):
         return 409, {"error": "conflicts with an existing row", "pgCode": code, "constraint": constraint}
     if isinstance(exc, (psycopg.OperationalError, pg.IdleInTransactionSessionTimeout)):

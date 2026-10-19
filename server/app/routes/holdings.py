@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api", tags=["holdings"])
 
 @router.get("/holdings")
 def get_holdings(user: CurrentUser, db: DbPool) -> list[User]:
-    """A participant sees only their own account; the auditor sees every account.
+    """A participant sees only their own account; the auditor and the operator see every account.
     Query parameters are ignored: the account always comes from the session."""
     with db.connection() as conn:
         return holdings.holdings_for(conn, user)

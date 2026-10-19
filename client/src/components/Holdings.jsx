@@ -3,8 +3,8 @@ import { formatUnits, shortName } from '../format.js'
 import { ApprovalBadge, BalanceFigures, SplitBar } from './Balance.jsx'
 import { Empty, LoadError, Loading } from './States.jsx'
 
-// Screen 1: where the synthetic security is held. A participant sees their own account;
-// the auditor sees every account (the API decides, from the session, not from the UI).
+// Screen 1: where the synthetic security is held. A participant sees their own account; the
+// auditor and the operator see every account (the API decides, from the session, not from the UI).
 export default function Holdings({ user, reloadKey }) {
   const { data, error, loading, reload } = useApiData('/holdings', reloadKey)
 
@@ -12,7 +12,7 @@ export default function Holdings({ user, reloadKey }) {
   if (error && !data) return <LoadError error={error} onRetry={reload} />
   if (data.length === 0) return <Empty>No holdings are recorded yet. Seed the database to create them.</Empty>
 
-  return user.role === 'AUDITOR' ? <AllAccounts rows={data} /> : <OwnAccount row={data[0]} />
+  return user.role === 'PARTICIPANT' ? <OwnAccount row={data[0]} /> : <AllAccounts rows={data} role={user.role} />
 }
 
 function OwnAccount({ row }) {
@@ -37,14 +37,16 @@ function OwnAccount({ row }) {
   )
 }
 
-function AllAccounts({ rows }) {
+function AllAccounts({ rows, role }) {
   const sum = (key) => rows.reduce((total, row) => total + row[key], 0)
   return (
     <section className="card" aria-labelledby="all-title">
       <div className="card-head">
         <div>
           <h2 id="all-title">All accounts</h2>
-          <p className="muted">Auditor view: read-only. {rows[0].symbol}, whole units.</p>
+          <p className="muted">
+            {role === 'OPERATOR' ? 'Operator' : 'Auditor'} view: read-only. {rows[0].symbol}, whole units.
+          </p>
         </div>
       </div>
       <div className="table-wrap">

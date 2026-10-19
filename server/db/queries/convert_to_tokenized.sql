@@ -1,6 +1,14 @@
--- convert_to_tokenized.sql   (Lesson 6; idempotency parts added in Lesson 8)
+-- convert_to_tokenized.sql   (Lesson 6; idempotency parts added in Lesson 8; collateral monitor in Lesson 12)
 -- POST /api/conversions  { "direction": "TO_TOKENIZED", "quantity": 100, "idempotencyKey": "..." }
 -- Mint, inside ONE account: traditional_units -= q, tokenized_units += q. The total does not change.
+--
+-- Lesson 12: a mint also takes COLLATERAL away. Tokenized units have no collateral value (under the
+--   SEC staff no-action letter of 11 Dec 2025, DTC gives tokenized entitlements no collateral value),
+--   so the q units leave settlement_accounts.collateral_value_cents at q x collateral_cents_per_unit.
+--   An account in debit could then fall below zero on its Collateral Monitor (collateral + net), so
+--   the app checks the CM BEFORE the mint and refuses a breaching mint at once with a 422 (a lab
+--   choice: a mint is not a delivery, so it does not recycle). The net debit cap cannot be affected:
+--   a mint moves no money, so net_cents does not change.
 --
 -- BEFORE any SQL the APP has already:
 --   * loaded the session user; role must be PARTICIPANT (AUDITOR -> 403)
@@ -14,6 +22,9 @@
 --   {actor_user_id, account_id, asset_id, quantity, idempotency_key, request_hash}
 --   + operation_id (after reserve) + result (just before the end).
 --   Each statement picks the names it needs; extra names are ignored, a missing name is an error.
+-- LOCK ORDER (the one global order, Lesson 12): the position row first, then the settlement account.
+--   The settlement engine locks all positions, then all settlement accounts, so a mint and a deliver
+--   order take their rows in the same order and can never wait for each other in a circle (deadlock).
 --
 -- ONE CONNECTION, ONE TRANSACTION: the app takes one connection from the pool and runs every
 --   statement below inside  with conn.transaction():  - psycopg sends BEGIN before the first
@@ -60,6 +71,29 @@ FOR UPDATE;
 -- APP DECIDES: 0 rows -> 500 (seeded positions always exist).
 --              traditional_units < quantity -> 422 "insufficient traditional units".
 
+-- name: lock_settlement_account
+-- Lesson 12. Lock this account's settlement row too - AFTER its position row (see LOCK ORDER) -
+-- then read its CURRENT net and collateral: no deliver order can change them until this
+-- transaction ends.
+SELECT net_cents, collateral_value_cents, net_debit_cap_cents
+FROM settlement_accounts
+WHERE account_id = %(account_id)s
+FOR UPDATE;
+-- APP DECIDES: 0 rows -> 500 (seed 004 creates one settlement account per account).
+
+-- name: read_collateral_price
+-- Lesson 12. What one unit is worth as collateral: prior close less the haircut, computed by
+-- Postgres (a generated column). No lock: no endpoint changes prices.
+SELECT prior_close_cents, haircut_bps, collateral_cents_per_unit
+FROM collateral_prices
+WHERE asset_id = %(asset_id)s;
+-- APP DECIDES: 0 rows -> 500 (seed 004 prices the instrument).
+--   Then risk.mint_problem(...): the CM after the mint would be
+--     (collateral_value_cents - quantity x collateral_cents_per_unit) + net_cents
+--   below 0 -> 422 "collateral monitor would go negative: tokenized units have no collateral value".
+--   Demo: gamma, 1,100 traditional units, net -1,000,000 (it received 100 units for $10,000):
+--     mint 995 -> 105 x 9,500 - 1,000,000 = -2,500 -> 422;  mint 994 -> 106 x 9,500 - 1,000,000 = 7,000 -> 201.
+
 -- name: apply_conversion
 UPDATE positions
 SET traditional_units = traditional_units - %(quantity)s,
@@ -69,6 +103,21 @@ WHERE account_id = %(account_id)s
 RETURNING traditional_units, tokenized_units;
 -- APP DECIDES: rowcount must be 1, otherwise raise. RETURNING gives the new balances for the result.
 -- Safety net: the CHECK (traditional_units >= 0) rejects this if the app check above has a bug.
+
+-- name: update_collateral
+-- Lesson 12. The q units that just became tokenized stop counting as collateral.
+-- A relative update (col = col - delta), so the CHECKs judge the real new value.
+-- The price comes from a subquery on collateral_prices, not from a parameter: the database reads
+-- the same number the app checked (no endpoint changes prices), and nobody can send a different one.
+-- quantity (INTEGER) x collateral_cents_per_unit (BIGINT) is a BIGINT: exact whole cents.
+UPDATE settlement_accounts
+SET collateral_value_cents = collateral_value_cents
+      - %(quantity)s * (SELECT collateral_cents_per_unit FROM collateral_prices WHERE asset_id = %(asset_id)s)
+WHERE account_id = %(account_id)s
+RETURNING collateral_value_cents;
+-- APP DECIDES: rowcount must be 1, otherwise raise. The result body does not show it (unchanged).
+-- Safety net: CHECK settlement_collateral_monitor_nonnegative (collateral + net >= 0) rejects a
+--   breach the app check missed -> 422 "collateral monitor would go negative".
 
 -- name: insert_ledger_entries
 -- One debit line and one credit line from the SAME parameter, so they always net to zero.

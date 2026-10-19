@@ -14,6 +14,7 @@
     "build": "npm run build -w client",
     "lint": "npm run lint -w client",
     "test": "uv run --directory server python -m tests.reset_db && uv run --directory server pytest",
+    "demo:settlement": "uv run --directory server python -m demo.settlement_scenario",
     "db:up": "docker compose up -d --wait db",
     "db:down": "docker compose down",
     "db:psql": "docker compose exec db psql -U ttlab -d ttlab_dev",

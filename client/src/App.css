@@ -218,6 +218,130 @@ main {
   width: 120px;
 }
 
+/* Settlement: four money figures, each with a line saying where it comes from. */
+.figures-4 {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.figures dd.figure-note {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.figures dd.figure-bad {
+  color: var(--bad);
+}
+
+/* Debit used against the net debit cap. */
+.meter {
+  display: flex;
+  height: 10px;
+  min-width: 80px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.meter-fill {
+  background: var(--traditional);
+}
+
+.meter-high .meter-fill {
+  background: var(--warn-border);
+}
+
+.meter-full .meter-fill {
+  background: var(--bad);
+}
+
+.meter-cell {
+  width: 110px;
+}
+
+.cap-line {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.day-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.notes {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* The settlement day: a row of labelled facts. */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.facts dd {
+  margin: 2px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.facts dd .muted {
+  font-weight: 400;
+}
+
+/* A recycle reason in words, with the numbers behind it underneath. */
+.reason {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reason-numbers,
+.cell-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cell-note {
+  display: block;
+}
+
+.reason-cell {
+  min-width: 240px;
+}
+
+.closed-day {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
 /* Pills and badges */
 .pill {
   display: inline-block;
@@ -249,8 +373,23 @@ main {
 }
 
 .op-convert_to_traditional,
-.op-opening {
+.op-opening,
+.op-deliver_order,
+.op-dvp_settlement {
   color: var(--traditional);
+}
+
+.op-settlement_progress_payment,
+.op-valued_cutoff,
+.op-final_settlement {
+  color: var(--accent);
+}
+
+/* Waiting, not failed: a recycling order, a closed valued phase. */
+.pill-warn {
+  color: var(--text);
+  background: var(--warn-bg);
+  box-shadow: inset 0 0 0 1px var(--warn-border);
 }
 
 /* Tables */
@@ -458,6 +597,23 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   text-align: left;
+}
+
+.demo-script {
+  font-size: 14px;
+}
+
+.demo-script summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.demo-script ol {
+  margin: 8px 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* Footer */
