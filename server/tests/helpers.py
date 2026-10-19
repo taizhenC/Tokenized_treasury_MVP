@@ -110,6 +110,21 @@ class Api:
     def burn(self, quantity: int, key: str) -> httpx.Response:
         return self.convert("TO_TRADITIONAL", quantity, key)
 
+    def deliver(self, to: int, quantity: int, amount_cents: int, key: str) -> httpx.Response:
+        """A valued (DVP) deliver order: `quantity` traditional units to `to`, against `amount_cents`."""
+        body = {"toAccountId": to, "quantity": quantity, "amountCents": amount_cents, "idempotencyKey": key}
+        return self.post("/api/delivery-orders", body)
+
+    def pay(self, amount_cents: int, key: str) -> httpx.Response:
+        """A settlement progress payment."""
+        return self.post("/api/settlement-progress-payments", {"amountCents": amount_cents, "idempotencyKey": key})
+
+    def valued_cutoff(self, key: str) -> httpx.Response:
+        return self.post("/api/settlement-day/valued-cutoff", {"idempotencyKey": key})
+
+    def final_settlement(self, key: str) -> httpx.Response:
+        return self.post("/api/settlement-day/final-settlement", {"idempotencyKey": key})
+
     def close(self) -> None:
         self.client.close()
 

@@ -36,6 +36,7 @@ def test_each_user_logs_in_and_me_returns_the_session_user(users):
         "beta": {"id": 12, "username": "beta", "role": "PARTICIPANT", "account_id": 102},
         "gamma": {"id": 13, "username": "gamma", "role": "PARTICIPANT", "account_id": 103},
         "auditor": {"id": 14, "username": "auditor", "role": "AUDITOR", "account_id": None},
+        "operator": {"id": 15, "username": "operator", "role": "OPERATOR", "account_id": None},
     }
 
 

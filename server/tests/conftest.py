@@ -72,7 +72,7 @@ def live_server():
 def users(live_server):
     """One logged-in client per seeded user."""
     clients = {}
-    for name in ("alpha", "beta", "gamma", "auditor"):
+    for name in ("alpha", "beta", "gamma", "auditor", "operator"):
         api = Api(live_server)
         response = api.login(name)
         assert response.status_code == 200, response.text
