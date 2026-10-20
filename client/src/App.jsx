@@ -153,11 +153,6 @@ export default function App() {
           />
         )}
       </main>
-
-      <footer className="footer">
-        <HealthStatus />
-        <p className="muted small">An independent educational project. Not affiliated with DTCC.</p>
-      </footer>
     </div>
   )
 }
