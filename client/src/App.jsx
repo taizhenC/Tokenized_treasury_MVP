@@ -111,9 +111,6 @@ export default function App() {
         )}
       </header>
 
-      <p className="banner">
-        <strong>Simulation.</strong> Synthetic data only: no real securities, money, blockchain or DTCC systems.
-      </p>
 
       {user && (
         <nav className="tabs" aria-label="Screens">
